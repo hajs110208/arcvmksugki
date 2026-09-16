@@ -13,7 +13,7 @@ jobs:
       - name: Setup needed packages
         run: |
           sudo apt update
-          sudo apt install -y --no-install-recommends bc bison build-essential ca-certificates flex git gnupg libelf-dev libssl-dev lsb-release software-properties-common wget libncurses-dev binutils-dev python3-dev python3-pip liblz4-dev zstd
+          sudo apt install -y --no-install-recommends bc bison build-essential ca-certificates flex git gnupg libelf-dev libssl-dev lsb-release software-properties-common wget libncurses-dev binutils-dev python3-dev python3-pip liblz4-dev repo zstd
       - name: Prepare kernel source
         run: |
           git config --global user.email "hajs0208@outlook.kr"
