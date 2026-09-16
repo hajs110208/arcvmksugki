@@ -20,7 +20,7 @@ jobs:
           git config --global user.name "hajs"
           mkdir kernel
           cd kernel
-          repo init -f -u https://android.googlesource.com/kernel/manifest -b common-android12-5.10-arcvm-gki-base --depth 1
+          repo init -u https://android.googlesource.com/kernel/manifest -b common-android12-5.10-arcvm-gki-base --depth 1
           repo sync -f
       - name: Patch with ksu
         run: |
