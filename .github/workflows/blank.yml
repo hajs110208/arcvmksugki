@@ -20,8 +20,8 @@ jobs:
           git config --global user.name "hajs"
           mkdir kernel
           cd kernel
-          repo init -u https://android.googlesource.com/kernel/manifest -b common-android12-5.10-arcvm-gki-base --depth 1
-          repo sync
+          repo init -f -u https://android.googlesource.com/kernel/manifest -b common-android12-5.10-arcvm-gki-base --depth 1
+          repo sync -f
       - name: Patch with ksu
         run: |
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
@@ -35,4 +35,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: production-build-artifacts # The name of the downloaded file
-          path: kernel/out/android12-5.10/dist/bzImage
+          path: /home/runner/work/arcvmksugki/arcvmksugki/kernel/out/android12-5.10/dist/bzImage
