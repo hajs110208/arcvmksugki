@@ -1,0 +1,38 @@
+name: build gki
+
+on:
+  workflow_dispatch: 
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup needed packages
+        run: |
+          sudo apt update
+          sudo apt install -y --no-install-recommends bc bison build-essential ca-certificates flex git gnupg libelf-dev libssl-dev lsb-release software-properties-common wget libncurses-dev binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu nuget gzip rsync python3 device-tree-compiler repo
+      - name: Prepare kernel source
+        run: |
+          git config --global user.email "hajs0208@outlook.kr"
+          git config --global user.name "hajs"
+          mkdir kernel
+          cd kernel
+          repo init -u https://android.googlesource.com/kernel/manifest -b common-android12-5.10-arcvm-gki-base --depth 1
+          repo sync
+      - name: Patch with ksu
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+          sed -i "s/check_defconfig//" common/build.config.gki
+          sed -i "s/DEFCONFIG=gki_defconfig/DEFCONFIG=x86_64_arcvm_defconfig/" common/build.config.gki
+          cp common/arch/x86/configs/x86_64_arcvm_defconfig common/arch/x86/configs/x86_64_defconfig
+      - name: Build
+        run: |
+          LTO=thin CFLAGS='-Wno-error -Wno-unused-function' CXXFLAGS='-Wno-error -Wno-unused-function' BUILD_CONFIG=common/build.config.gki.x86_64 build/build.sh
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-build-artifacts # The name of the downloaded file
+          path: kernel/out/android12-5.10/dist/bzImage
