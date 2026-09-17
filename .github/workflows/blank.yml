@@ -2,6 +2,7 @@ name: build gki
 
 on:
   workflow_dispatch:
+  push: 
 
 jobs:
   build:
