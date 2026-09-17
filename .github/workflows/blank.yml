@@ -28,7 +28,8 @@ jobs:
             software-properties-common \
             wget \
             libncurses-dev \
-            binutils
+            binutils \
+            repo
 
       - name: Prepare kernel source
         run: |
