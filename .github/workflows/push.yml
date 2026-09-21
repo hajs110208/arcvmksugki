@@ -1,8 +1,7 @@
-name: build gki
+name: source
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   build:
