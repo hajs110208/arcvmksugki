@@ -19,6 +19,7 @@ jobs:
             bison \
             build-essential \
             ca-certificates \
+            curl \
             flex \
             git \
             gnupg \
@@ -37,8 +38,8 @@ jobs:
           git config --global user.email "hajs0208@outlook.kr"
           git config --global user.name "hajs"
 
-          mkdir -p kernel
-          cd kernel
+          mkdir -p "${GITHUB_WORKSPACE}/kernel"
+          cd "${GITHUB_WORKSPACE}/kernel"
 
           repo init \
             -u https://android.googlesource.com/kernel/manifest \
@@ -47,36 +48,35 @@ jobs:
 
           repo sync -f
 
-      - name: Patch with ksu
+      - name: Patch kernel with KernelSU
         run: |
           set -euxo pipefail
-          cd /home/runner/work/arcvmksugki/arcvmksugki/kernel/
+          cd "${GITHUB_WORKSPACE}/kernel"
 
-          # Preferred fix:
-          # Pin a KernelSU revision that matches the ArcVM 5.10 tree.
-          # Replace this with a tested tag/commit for your specific kernel.
-
-          curl -fsSL \
-            "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" \
+          # Inject KernelSU into the checked-out kernel tree. Keep this on the
+          # upstream main branch until a tested revision for ArcVM is selected.
+          curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh \
             | bash -
 
-          sed -i "s/check_defconfig//" common/build.config.gki
+          test -d drivers/kernelsu
+
+          sed -i 's/check_defconfig//' common/build.config.gki
           sed -i \
-            "s/DEFCONFIG=gki_defconfig/DEFCONFIG=x86_64_arcvm_defconfig/" \
+            's/DEFCONFIG=gki_defconfig/DEFCONFIG=x86_64_arcvm_defconfig/' \
             common/build.config.gki
 
           cp \
             common/arch/x86/configs/x86_64_arcvm_defconfig \
             common/arch/x86/configs/x86_64_defconfig
 
-          # Do not enable the unsupported x86 fallback unless your selected
+          # Do not enable the unsupported x86 fallback unless the selected
           # KernelSU revision explicitly supports it.
-          # echo "CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=y" \
-          #   >> common/arch/x86/configs/x86_64_defconfig
 
       - name: Build
         run: |
-          cd /home/runner/work/arcvmksugki/arcvmksugki/kernel/
+          set -euxo pipefail
+          cd "${GITHUB_WORKSPACE}/kernel"
 
           LTO=thin \
           CFLAGS="-Wno-error -Wno-unused-function" \
@@ -88,4 +88,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gki-android12-5.10-x86_64_arcvm
-          path: /home/runner/work/arcvmksugki/arcvmksugki/kernel/out/android12-5.10/dist/bzImage
+          path: "${{ github.workspace }}/kernel/out/android12-5.10/dist/bzImage"
