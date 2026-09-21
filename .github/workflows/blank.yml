@@ -56,10 +56,9 @@ jobs:
           # Preferred fix:
           # Pin a KernelSU revision that matches the ArcVM 5.10 tree.
           # Replace this with a tested tag/commit for your specific kernel.
-          KSU_REF="${KSU_REF:-<compatible-kernelsu-tag-or-commit>}"
 
           curl -fsSL \
-            "https://raw.githubusercontent.com/tiann/KernelSU/${KSU_REF}/kernel/setup.sh" \
+            "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" \
             | bash -
 
           sed -i "s/check_defconfig//" common/build.config.gki
