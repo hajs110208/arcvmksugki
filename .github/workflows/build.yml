@@ -34,7 +34,7 @@ jobs:
       - name: Build
         run: |
           set -euxo pipefail
-          cd "$GITHUB_WORKSPACE"
+          cd "$GITHUB_WORKSPACE/kernel"
 
           if [ ! -f "common/build.config.gki" ]; then
             echo "No local kernel build config found in the repository."
