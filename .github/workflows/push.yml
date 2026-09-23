@@ -3,6 +3,10 @@ name: source
 on:
   workflow_dispatch:
 
+concurrency:
+  group: source-main-push
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -89,5 +93,21 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Add KernelSU-patched kernel source"
-          git push origin HEAD:main
+          git commit -m "Add patched kernel source"
+
+          git fetch origin main
+          git rebase origin/main
+
+          # Retry in case another workflow pushes between fetch and push.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            echo "Push failed; synchronizing with origin/main (attempt ${attempt})"
+            git fetch origin main
+            git rebase origin/main
+          done
+
+          echo "Unable to push after multiple attempts."
+          exit 1
