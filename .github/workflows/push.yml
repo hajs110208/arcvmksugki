@@ -96,25 +96,11 @@ jobs:
 
       - name: Patch kernel with KernelSU
         working-directory: ${{ github.workspace }}/kernel/common
-        env:
-          KERNELSU_VERSION: v0.9.5
         shell: bash
         run: |
           set -euxo pipefail
-
-          timeout \
-            --signal=TERM \
-            --kill-after=60s \
-            10m \
-            bash -c '
-              curl \
-                --fail \
-                --silent \
-                --show-error \
-                --location \
-                https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh \
-                | bash -s -- "${KERNELSU_VERSION}"
-            '
+          curl -LO https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh
+          bash setup.sh -- v3.3.0
 
           test -d drivers/kernelsu
 
