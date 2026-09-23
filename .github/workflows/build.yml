@@ -15,7 +15,7 @@ jobs:
       - name: Setup needed packages
         run: |
           sudo apt update
-          sudo apt install -y --no-install-recommends \
+          sudo apt upgrade -y --no-install-recommends \
             bc \
             bison \
             build-essential \
