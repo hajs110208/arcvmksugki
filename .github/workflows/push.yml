@@ -57,17 +57,28 @@ jobs:
           repo sync -f
 
       - name: Patch kernel with KernelSU
+        working-directory: ${{ github.workspace }}/kernel/common
+        env:
+          KERNELSU_VERSION: v0.9.5
         run: |
           set -euxo pipefail
-          cd "${GITHUB_WORKSPACE}/kernel/common"
 
           curl --fail --silent --show-error --location \
             https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh \
-            | bash -
+            | bash -s -- "${KERNELSU_VERSION}"
 
           test -d drivers/kernelsu
 
+          # The Android 12 / 5.10 ArcVM kernel does not contain the
+          # indirect syscall bypass patchset required by newer KernelSU.
+          if grep -R -q "X86_FEATURE_INDIRECT_SAFE" \
+              drivers/kernelsu arch/x86 include 2>/dev/null; then
+            echo "::error::Selected KernelSU requires indirect syscall bypass patches"
+            exit 1
+          fi
+
           sed -i 's/check_defconfig//' build.config.gki
+
           sed -i \
             's/DEFCONFIG=gki_defconfig/DEFCONFIG=x86_64_arcvm_defconfig/' \
             build.config.gki
@@ -75,6 +86,21 @@ jobs:
           cp \
             arch/x86/configs/x86_64_arcvm_defconfig \
             arch/x86/configs/x86_64_defconfig
+
+      - name: Verify kernel source
+        working-directory: ${{ github.workspace }}/kernel
+        run: |
+          set -euxo pipefail
+
+          test -f common/build.config.gki
+          test -f common/build.config.gki.x86_64
+          test -d common/drivers/kernelsu
+
+          if grep -R -q "X86_FEATURE_INDIRECT_SAFE" \
+              common/drivers/kernelsu common/arch/x86 common/include 2>/dev/null; then
+            echo "::error::Kernel source is still missing the indirect syscall bypass patchset"
+            exit 1
+          fi
 
       - name: Push kernel source to main
         run: |
