@@ -51,41 +51,19 @@ jobs:
       - name: Patch kernel with KernelSU
         run: |
           set -euxo pipefail
-          cd "${GITHUB_WORKSPACE}/kernel"
+          cd "${GITHUB_WORKSPACE}/kernel/common"
 
-          # Inject KernelSU into the checked-out kernel tree. Keep this on the
-          # upstream main branch until a tested revision for ArcVM is selected.
           curl --fail --silent --show-error --location \
             https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh \
             | bash -
 
           test -d drivers/kernelsu
 
-          sed -i 's/check_defconfig//' common/build.config.gki
+          sed -i 's/check_defconfig//' build.config.gki
           sed -i \
             's/DEFCONFIG=gki_defconfig/DEFCONFIG=x86_64_arcvm_defconfig/' \
-            common/build.config.gki
+            build.config.gki
 
           cp \
-            common/arch/x86/configs/x86_64_arcvm_defconfig \
-            common/arch/x86/configs/x86_64_defconfig
-
-          # Do not enable the unsupported x86 fallback unless the selected
-          # KernelSU revision explicitly supports it.
-
-      - name: Build
-        run: |
-          set -euxo pipefail
-          cd "${GITHUB_WORKSPACE}/kernel"
-
-          LTO=thin \
-          CFLAGS="-Wno-error -Wno-unused-function" \
-          CXXFLAGS="-Wno-error -Wno-unused-function" \
-          BUILD_CONFIG=common/build.config.gki.x86_64 \
-          build/build.sh
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: gki-android12-5.10-x86_64_arcvm
-          path: "${{ github.workspace }}/kernel/out/android12-5.10/dist/bzImage"
+            arch/x86/configs/x86_64_arcvm_defconfig \
+            arch/x86/configs/x86_64_defconfig
