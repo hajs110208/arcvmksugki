@@ -10,18 +10,29 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  DEBIAN_FRONTEND: noninteractive
+  REPO_SYNC_JOBS: 4
+
 jobs:
   source:
     runs-on: ubuntu-22.04
+    timeout-minutes: 120
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup needed packages
+        shell: bash
         run: |
-          sudo apt update
-          sudo apt install -y --no-install-recommends \
+          set -euxo pipefail
+
+          sudo apt-get update
+
+          sudo apt-get install -y --no-install-recommends \
             bc \
             bison \
             build-essential \
@@ -31,15 +42,30 @@ jobs:
             git \
             gnupg \
             libelf-dev \
+            libncurses-dev \
             libssl-dev \
             lsb-release \
+            python3 \
             software-properties-common \
             wget \
-            libncurses-dev \
-            binutils \
-            repo
+            binutils
+
+          # Install the current Android repo launcher directly.
+          # The Ubuntu package may be unavailable or outdated.
+          sudo curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            https://storage.googleapis.com/git-repo-downloads/repo \
+            --output /usr/local/bin/repo
+
+          sudo chmod 0755 /usr/local/bin/repo
+
+          repo --version
 
       - name: Prepare kernel source
+        shell: bash
         run: |
           set -euxo pipefail
 
@@ -52,20 +78,43 @@ jobs:
           repo init \
             -u https://android.googlesource.com/kernel/manifest \
             -b common-android12-5.10-arcvm-gki-base \
-            --depth 1
+            --depth 1 \
+            --no-repo-verify
 
-          repo sync -f
+          # Limit parallelism and disable optional clone bundles/tags
+          # to prevent the hosted runner from appearing to hang.
+          timeout \
+            --signal=TERM \
+            --kill-after=60s \
+            45m \
+            repo sync \
+              --fail-fast \
+              --current-branch \
+              --no-clone-bundle \
+              --no-tags \
+              -j"${REPO_SYNC_JOBS}"
 
       - name: Patch kernel with KernelSU
         working-directory: ${{ github.workspace }}/kernel/common
         env:
           KERNELSU_VERSION: v0.9.5
+        shell: bash
         run: |
           set -euxo pipefail
 
-          curl --fail --silent --show-error --location \
-            https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh \
-            | bash -s -- "${KERNELSU_VERSION}"
+          timeout \
+            --signal=TERM \
+            --kill-after=60s \
+            10m \
+            bash -c '
+              curl \
+                --fail \
+                --silent \
+                --show-error \
+                --location \
+                https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh \
+                | bash -s -- "${KERNELSU_VERSION}"
+            '
 
           test -d drivers/kernelsu
 
@@ -89,6 +138,7 @@ jobs:
 
       - name: Verify kernel source
         working-directory: ${{ github.workspace }}/kernel
+        shell: bash
         run: |
           set -euxo pipefail
 
@@ -97,12 +147,15 @@ jobs:
           test -d common/drivers/kernelsu
 
           if grep -R -q "X86_FEATURE_INDIRECT_SAFE" \
-              common/drivers/kernelsu common/arch/x86 common/include 2>/dev/null; then
+              common/drivers/kernelsu \
+              common/arch/x86 \
+              common/include 2>/dev/null; then
             echo "::error::Kernel source is still missing the indirect syscall bypass patchset"
             exit 1
           fi
 
       - name: Push kernel source to main
+        shell: bash
         run: |
           set -euxo pipefail
           cd "${GITHUB_WORKSPACE}"
@@ -124,13 +177,13 @@ jobs:
           git fetch origin main
           git rebase origin/main
 
-          # Retry in case another workflow pushes between fetch and push.
           for attempt in 1 2 3; do
             if git push origin HEAD:main; then
               exit 0
             fi
 
             echo "Push failed; synchronizing with origin/main (attempt ${attempt})"
+
             git fetch origin main
             git rebase origin/main
           done
