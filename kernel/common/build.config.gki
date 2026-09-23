@@ -1,3 +1,0 @@
-DEFCONFIG=x86_64_arcvm_defconfig
-POST_DEFCONFIG_CMDS=""
-
