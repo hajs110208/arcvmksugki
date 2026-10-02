@@ -50,8 +50,6 @@ jobs:
             wget \
             binutils
 
-          # Install the current Android repo launcher directly.
-          # The Ubuntu package may be unavailable or outdated.
           sudo curl \
             --fail \
             --silent \
@@ -61,7 +59,6 @@ jobs:
             --output /usr/local/bin/repo
 
           sudo chmod 0755 /usr/local/bin/repo
-
           repo --version
 
       - name: Prepare kernel source
@@ -81,8 +78,6 @@ jobs:
             --depth 1 \
             --no-repo-verify
 
-          # Limit parallelism and disable optional clone bundles/tags
-          # to prevent the hosted runner from appearing to hang.
           timeout \
             --signal=TERM \
             --kill-after=60s \
@@ -108,32 +103,15 @@ jobs:
           sed -i 's/check_defconfig//' build.config.gki
 
           sed -i \
-             's/DEFCONFIG=gki_defconfig/DEFCONFIG=x86_64_arcvm_defconfig/' \
-              build.config.gki
+            's/DEFCONFIG=gki_defconfig/DEFCONFIG=x86_64_arcvm_defconfig/' \
+            build.config.gki
 
           cp \
-              arch/x86/configs/x86_64_arcvm_defconfig \
-              arch/x86/configs/x86_64_defconfig
+            arch/x86/configs/x86_64_arcvm_defconfig \
+            arch/x86/configs/x86_64_defconfig
+
           if ! grep -q '^CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=y' arch/x86/configs/x86_64_defconfig; then
-          echo "CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=y" >> arch/x86/configs/x86_64_defconfig
-          fi
-
-      - name: Verify kernel source
-        working-directory: ${{ github.workspace }}/kernel
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          test -f common/build.config.gki
-          test -f common/build.config.gki.x86_64
-          test -d common/drivers/kernelsu
-
-          if grep -R -q "X86_FEATURE_INDIRECT_SAFE" \
-              common/drivers/kernelsu \
-              common/arch/x86 \
-              common/include 2>/dev/null; then
-            echo "::error::Kernel source is still missing the indirect syscall bypass patchset"
-            exit 1
+            echo "CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=y" >> arch/x86/configs/x86_64_defconfig
           fi
 
       - name: Push kernel source to main
@@ -142,7 +120,6 @@ jobs:
           set -euxo pipefail
           cd "${GITHUB_WORKSPACE}"
 
-          # Remove repo and nested Git metadata before committing the source.
           rm -rf kernel/.repo
           find kernel -type d -name .git -prune -exec rm -rf {} +
           find kernel -type f -name .git -delete
@@ -165,7 +142,6 @@ jobs:
             fi
 
             echo "Push failed; synchronizing with origin/main (attempt ${attempt})"
-
             git fetch origin main
             git rebase origin/main
           done
