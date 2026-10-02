@@ -30,8 +30,10 @@
 #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
 #include <asm/cpufeature.h>
 #include <linux/version.h>
-#ifndef X86_FEATURE_INDIRECT_SAFE
-#error "FATAL: Your kernel is missing the indirect syscall bypass patches!"
+#ifdef X86_FEATURE_INDIRECT_SAFE
+#define KSU_X86_INDIRECT_SAFE_AVAILABLE 1
+#else
+#define KSU_X86_INDIRECT_SAFE_AVAILABLE 0
 #endif
 #endif
 
@@ -90,7 +92,7 @@ module_param_named(bundled, ksu_bundled, bool, 0);
 
 int __init kernelsu_init(void)
 {
-#if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
+#if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER) && KSU_X86_INDIRECT_SAFE_AVAILABLE
     // If the kernel has the hardening patch, X86_FEATURE_INDIRECT_SAFE must be set
     if (!boot_cpu_has(X86_FEATURE_INDIRECT_SAFE)) {
         pr_alert("*************************************************************");
