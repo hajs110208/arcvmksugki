@@ -25,6 +25,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Remove existing kernel folder
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git rm -r -q --ignore-unmatch kernel
+          rm -rf kernel
+
       - name: Setup needed packages
         shell: bash
         run: |
@@ -106,9 +113,17 @@ jobs:
             arch/x86/configs/x86_64_arcvm_defconfig \
             arch/x86/configs/x86_64_defconfig
 
-          if ! grep -q '^CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=y' arch/x86/configs/x86_64_defconfig; then
-            echo "CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=y" >> arch/x86/configs/x86_64_defconfig
-          fi
+          # Fail early if this SukiSU-Ultra version has no such Kconfig symbol
+          grep -rq 'KSU_X86_PATCH_SYSCALL_DISPATCHER' drivers/kernelsu/ \
+            || { echo "KSU_X86_PATCH_SYSCALL_DISPATCHER not found in drivers/kernelsu"; exit 1; }
+
+          # The build uses x86_64_arcvm_defconfig (see build.config.gki),
+          # so the option must be set there (and in the copy as well).
+          for f in arch/x86/configs/x86_64_arcvm_defconfig arch/x86/configs/x86_64_defconfig; do
+            if ! grep -q '^CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=y' "$f"; then
+              echo "CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=y" >> "$f"
+            fi
+          done
 
       - name: Push kernel source to main
         shell: bash
